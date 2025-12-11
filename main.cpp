@@ -100,6 +100,18 @@ data push_obj( double avgZ,double  avgR, double avgTh, double avgVR,double avgVT
 
 	return obj;
 }
+
+double fun_sigVth2 (double x)
+{
+//=======================            ==========================
+//	a0              = -529.955         +/- 5.502        (1.038%)
+//	a1              = 13425.3          +/- 17.6         (0.1311%)
+//f(x)=a0+a1/x
+	//return -529.955  + 13425.3/x;
+	double f = (x-20)*7.5;
+	return (-529.955  + 13425.3/x) + f*f;
+}
+
 double fun_sigVR2_VR2 (double x)
 {
 //=======================            ==========================
@@ -190,7 +202,7 @@ void calc_gradient_my(data *** obj, int ii, int jj, int kk, int size_i,int size_
 
 	obj[ii][jj][kk].grad_den_R = (nR*S_Rd - S_R*S_d)/(nR*S_RR-S_R*S_R);
 	//obj[ii][jj][kk].grad_den_R = 0;
-	//obj[ii][jj][kk].grad_VR_R = (nR*S_RvR-S_R*S_vR)/(nR*S_RR-S_R*S_R);
+	obj[ii][jj][kk].grad_VR_R = (nR*S_RvR-S_R*S_vR)/(nR*S_RR-S_R*S_R);
 
 	double dR = 0.1;
 	obj[ii][jj][kk].grad_sigVR2_VR2_R = ( fun_sigVR2_VR2(obj[ii][jj][kk].R+dR/2.0)-fun_sigVR2_VR2(obj[ii][jj][kk].R-dR/2.0)) / dR;
@@ -239,16 +251,25 @@ void calc_gradient_my(data *** obj, int ii, int jj, int kk, int size_i,int size_
 
 void calc_gradient_khrob(data *** obj, int ii, int jj, int kk, int size_i,int size_j, int size_k, int Nbin_i, int Nbin_j, int Nbin_k, double h_R, double h_Z)
 {
+	if(jj>150)
+	{
+		size_i=5*size_i;
+		size_j=5*size_j;
+		size_k=5*size_k;
+	}
+	//by theta
 	int imin = ii-size_i;
 	if(imin<0){imin=0;}
 	int imax = ii+size_i;
 	if(imax>=Nbin_i){imax=Nbin_i-1;}
 
+	//by R
 	int jmin = jj-size_j;
 	if(jmin<0){jmin=0;}
 	int jmax = jj+size_j;
 	if(jmax>=Nbin_j){jmax=Nbin_j-1;}
 
+	//by Z
 	int kmin = kk-size_k;
 	if(kmin<0){kmin=0;}
 	int kmax = kk+size_k;
@@ -299,8 +320,6 @@ void calc_gradient_khrob(data *** obj, int ii, int jj, int kk, int size_i,int si
 
 	obj[ii][jj][kk].grad_sigVR2_R = (nR*S_RsigVR2-S_R*S_sigVR2)/(nR*S_RR-S_R*S_R);
 
-	//double dR = 0.1;
-	//obj[ii][jj][kk].grad_sigVR2_R = ( fun_sigVR2(obj[ii][jj][kk].R+dR/2.0)-fun_sigVR2(obj[ii][jj][kk].R-dR/2.0)) / dR;
 	obj[ii][jj][kk].nR = nR;
 
 	if(nR>1)
@@ -309,8 +328,7 @@ void calc_gradient_khrob(data *** obj, int ii, int jj, int kk, int size_i,int si
 	}else
 	{obj[ii][jj][kk].grad_VR_R = 0;}
 
-
-//	double Z0 = obj[ii][jj][kk].Z;
+	//	double Z0 = obj[ii][jj][kk].Z;
 
 	for(int i = imin; i<=imax; ++i)
 		for(int k = kmin; k<=kmax; ++k)
@@ -319,6 +337,7 @@ void calc_gradient_khrob(data *** obj, int ii, int jj, int kk, int size_i,int si
 			{
 			Z = obj[i][jj][k].Z;
 			sigVRVZ = obj[i][jj][k].sigVRVZ;
+			//sigVRVZ = obj[i][jj][k].VR*obj[i][jj][k].VZ;
 
 			S_Z    += Z;
 			S_ZZ   += Z*Z;
@@ -339,10 +358,40 @@ void calc_gradient_khrob(data *** obj, int ii, int jj, int kk, int size_i,int si
 //	obj[ii][jj][kk].grad_VR_R = 0;
 //	obj[ii][jj][kk].grad_sigVRVZ_Z = 0;
 
+	sigVR2 =  obj[ii][jj][kk].sigVR2;
+	double  VR = obj[ii][jj][kk].VR;
+	double sigVth2 = obj[ii][jj][kk].sigVth2;
+	double dR = 0.1;
 
-	obj[ii][jj][kk].Vcru =  obj[ii][jj][kk].Vtheta*obj[ii][jj][kk].Vtheta + obj[ii][jj][kk].sigVth2  + (obj[ii][jj][kk].VR*obj[ii][jj][kk].VR+ obj[ii][jj][kk].sigVR2) * (obj[ii][jj][kk].R-h_R)/h_R
-							- 2.0*obj[ii][jj][kk].R*obj[ii][jj][kk].VR * obj[ii][jj][kk].grad_VR_R - obj[ii][jj][kk].R * obj[ii][jj][kk].grad_sigVR2_R
-							+ obj[ii][jj][kk].R*obj[ii][jj][kk].Z * obj[ii][jj][kk].sigVRVZ /(h_Z*fabs(obj[ii][jj][kk].Z) ) - obj[ii][jj][kk].R * obj[ii][jj][kk].grad_sigVRVZ_Z ;
+
+	double grad_sigVR2_R = obj[ii][jj][kk].grad_sigVR2_R ;
+	double grad_VR_R = obj[ii][jj][kk].grad_VR_R;
+
+	double grad_sigVRVZ_Z = obj[ii][jj][kk].grad_sigVRVZ_Z;
+	sigVRVZ  = obj[ii][jj][kk].sigVRVZ;
+
+		if(jj>150)
+		{
+		grad_sigVR2_R = ( fun_sigVR2(obj[ii][jj][kk].R+dR/2.0)-fun_sigVR2(obj[ii][jj][kk].R-dR/2.0)) / dR;
+		sigVR2 =  fun_sigVR2(obj[ii][jj][kk].R);
+		sigVth2 = fun_sigVth2(obj[ii][jj][kk].R);
+
+		//grad_sigVR2_R = 0;
+		//grad_VR_R = 0;
+		grad_sigVRVZ_Z= 0;
+		sigVRVZ  = 0;
+
+		}
+
+
+
+//	obj[ii][jj][kk].Vcru =  obj[ii][jj][kk].Vtheta*obj[ii][jj][kk].Vtheta + obj[ii][jj][kk].sigVth2  + (obj[ii][jj][kk].VR*obj[ii][jj][kk].VR+ obj[ii][jj][kk].sigVR2) * (obj[ii][jj][kk].R-h_R)/h_R
+//							- 2.0*obj[ii][jj][kk].R*obj[ii][jj][kk].VR * obj[ii][jj][kk].grad_VR_R - obj[ii][jj][kk].R * obj[ii][jj][kk].grad_sigVR2_R
+//							+ obj[ii][jj][kk].R*obj[ii][jj][kk].Z * obj[ii][jj][kk].sigVRVZ /(h_Z*fabs(obj[ii][jj][kk].Z) ) - obj[ii][jj][kk].R * obj[ii][jj][kk].grad_sigVRVZ_Z ;
+
+	obj[ii][jj][kk].Vcru =  obj[ii][jj][kk].Vtheta*obj[ii][jj][kk].Vtheta + sigVth2  + (VR*VR+ sigVR2) * (obj[ii][jj][kk].R-h_R)/h_R
+								- 2.0*obj[ii][jj][kk].R*VR * grad_VR_R - obj[ii][jj][kk].R * grad_sigVR2_R
+								+ obj[ii][jj][kk].R*obj[ii][jj][kk].Z * sigVRVZ /(h_Z*fabs(obj[ii][jj][kk].Z) ) - obj[ii][jj][kk].R * grad_sigVRVZ_Z ;
 
 	if(obj[ii][jj][kk].Vcru>0)
 	{
@@ -511,10 +560,57 @@ int main(int argc, char * argv[])
 
 	}
 
+
 	//avreging Vcru
+	char filez [1024];
 	char file [1024];
 		for(int iz=0;iz<Nz;++iz)
 		{
+			sprintf(filez,"Vcru_z_%.1f.txt",(iz-2)*0.5);
+			FILE * fz = fopen(filez,"w");
+			if(!fz)
+			{
+				fprintf(stderr,"Can not open file %s to write results\n",filez);
+				break;
+			}
+			fprintf(fz,"R\tsR\tTheta\tsTheta\tZ\tsZ\tVR\tsVR\tVtheta\tsVtheta\tVZ\tsVZ\tsigVR2\ts_sigVR2\tsigVth2\ts_sigVth2\tsigVRVZ\ts_sigVRVZ\tVcru\tsVcru\tNbin\n");
+
+
+
+
+			for(int j=0;j<NR;j++)
+			{
+				data avg_z;
+				data qrt_z;
+				data var_z;
+				int n_z=0;
+				for(int i=30;i<Nth-30;i++)
+				{
+					if(obj[i][j][iz].Vcru>0)
+					{
+					n_z++;
+					calc_statistic(obj[i][j][iz].R,n_z,&avg_z.R,&qrt_z.R,&var_z.R);
+					calc_statistic(obj[i][j][iz].theta,n_z,&avg_z.theta,&qrt_z.theta,&var_z.theta);
+					calc_statistic(obj[i][j][iz].Z,n_z,&avg_z.Z,&qrt_z.Z,&var_z.Z);
+
+					calc_statistic(obj[i][j][iz].VR,n_z,&avg_z.VR,&qrt_z.VR,&var_z.VR);
+					calc_statistic(obj[i][j][iz].Vtheta,n_z,&avg_z.Vtheta,&qrt_z.Vtheta,&var_z.Vtheta);
+					calc_statistic(obj[i][j][iz].VZ,n_z,&avg_z.VZ,&qrt_z.VZ,&var_z.VZ);
+
+					calc_statistic(obj[i][j][iz].sigVR2,n_z,&avg_z.sigVR2,&qrt_z.sigVR2,&var_z.sigVR2);
+					calc_statistic(obj[i][j][iz].sigVth2,n_z,&avg_z.sigVth2,&qrt_z.sigVth2,&var_z.sigVth2);
+					calc_statistic(obj[i][j][iz].sigVRVZ,n_z,&avg_z.sigVRVZ,&qrt_z.sigVRVZ,&var_z.sigVRVZ);
+
+					calc_statistic(obj[i][j][iz].Vcru,n_z,&avg_z.Vcru,&qrt_z.Vcru,&var_z.Vcru);
+					}
+				}
+
+			if(n_z>1)
+			fprintf(fz,"%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%d\n",
+					avg_z.R,var_z.R,avg_z.theta,var_z.theta,avg_z.Z,var_z.Z,avg_z.VR,var_z.VR,avg_z.Vtheta,var_z.Vtheta,avg_z.VZ,var_z.VZ,
+					avg_z.sigVR2,var_z.sigVR2,avg_z.sigVth2,var_z.sigVth2,avg_z.sigVRVZ,var_z.sigVRVZ,avg_z.Vcru,var_z.Vcru,n_z);
+			}
+
 
 			for(int ii=39;ii<80;ii+=20)
 			{
@@ -537,6 +633,7 @@ int main(int argc, char * argv[])
 						if(obj[i][j][iz].Vcru>0)
 						{
 							n++;
+
 							calc_statistic(obj[i][j][iz].R,n,&avg.R,&qrt.R,&var.R);
 							calc_statistic(obj[i][j][iz].theta,n,&avg.theta,&qrt.theta,&var.theta);
 							calc_statistic(obj[i][j][iz].Z,n,&avg.Z,&qrt.Z,&var.Z);
@@ -550,6 +647,7 @@ int main(int argc, char * argv[])
 							calc_statistic(obj[i][j][iz].sigVRVZ,n,&avg.sigVRVZ,&qrt.sigVRVZ,&var.sigVRVZ);
 
 							calc_statistic(obj[i][j][iz].Vcru,n,&avg.Vcru,&qrt.Vcru,&var.Vcru);
+
 						}
 					}
 
