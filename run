@@ -22,6 +22,10 @@ z=$(echo "scale=3; ($i-2)*0.5" | bc -l | xargs printf "%.1f")
 echo $z;
 ./plot-gifs_index_2_data $fname Vtheta_Vrot_z_$z.gif '($4):($8)' '($4):($16)' 4 20 180 250 'R, kpc' 'V, km/s z= '$z'' 1 30 90 Vth Vcr 120 1 2 10 100
 plot-1D_3f_error_point Vcir_R_z_$z.eps Vcru_th_160_z_$z.txt '($1):($19)' Vcru_th_180_z_$z.txt '($1):($19)' '(0):(0):(0)'  Vcru_th_200_z_$z.txt '($1):($19)' '(0):(0):(0)' Eilers_2019_Vrot.dat '($1):($2)' '($1):($2):($3)' 4 20 180 250 'R, kpc' 'V, km/s' 2 10 '@{/Symbol q }  = 160'  '@{/Symbol q }  = 180' '@{/Symbol q }  = 200' 'Eilers2019'
+plot-1D_3f_error_point Vth_R_z_$z.eps Vcru_th_160_z_$z.txt '($1):(-$9)' Vcru_th_180_z_$z.txt '($1):(-$9)' '(0):(0):(0)'  Vcru_th_200_z_$z.txt '($1):(-$9)' '(0):(0):(0)' Eilers_2019_Vrot.dat '($1):($2)' '($1):($2):($3)' 4 20 180 250 'R, kpc' 'V, km/s' 2 10 '@{/Symbol q }  = 160'  '@{/Symbol q }  = 180' '@{/Symbol q }  = 200' 'Eilers2019'
+plot-1D_3f_error_point VthVcr_th_all_R_z_$z.eps Vcru_z_$z.txt '($1):(-$9)' Vcru_z_$z.txt '($1):($19)' '(0):(0):(0)'  Yongjun_Vrot.dat '($1):($2)' '($1):($2):($3)' Eilers_2019_Vrot.dat '($1):($2)' '($1):($2):($3)' 4 25 180 250 'R, kpc' 'V, km/s for {/Symbol q}=180 ' 2 10 '{V_{/Symbol q}}'  '{V_{cir}}' 'Yongjun' 'Eilers2019'
+
+#plot-1D_3f_error_point Zavg_R_z_$z.eps Vcru_th_160_z_$z.txt '($1):($5)' Vcru_th_180_z_$z.txt '($1):($5)' '(0):(0):(0)'  Vcru_th_200_z_$z.txt '($1):($5)' '(0):(0):(0)' Eilers_2019_Vrot.dat '($1):($2)' '($1):($2):($3)' 4 20 -1.5 1.5 'R, kpc' 'Zavg, kpc' 2 0.5 '@{/Symbol q }  = 160'  '@{/Symbol q }  = 180' '@{/Symbol q }  = 200' 'Eilers2019'
 done
 
 #Vcru_th_160_z_0.0.txt
